@@ -4,9 +4,10 @@ require('dotenv').config();
 const express = require('express');
 const { Gauge, register } = require('prom-client');
 const { countFilesFromFolder, getDiskSpace } = require('./nfsService');
+const Promise = require('bluebird');
 
 const PORT = process.env.PORT || 5555;
-
+const PATH_TO_MONITOR = process.env.PATH_TO_MONITOR;
 
 const nfsFolderTsGauge = new Gauge({
     name: 'nfs_folder_ts_files',
@@ -36,34 +37,31 @@ app.get('/metrics', (req, res) => {
         })
         .catch(err => {
             console.log(`Error while getting the metrics with error ${err}`);
+            res.set('Content-Type', register.contentType);
+            res.status(500).send(`Internal server error: ${err.message}`);
         });
 });
 
 
 function getMetrics() {
-    return new Promise((resolve, reject) => {
-        return getDiskSpace()
-            .then(diskUsageRespone => {
-                if (diskUsageRespone) {
-                    diskUsageRespone.forEach(disk => {
-                        nfDiskUsageAvailableGauge.set({ filesystem: disk.filesystem }, disk.usePrecents);
-                    });
-                }
-                return countFilesFromFolder()
-                    .then(directories => {
-                        if (directories) {
-                            Object.keys(directories).forEach(dir => {
-                                nfsFolderMp4Gauge.set({ directory: dir }, directories[dir].mp4Counter);
-                                nfsFolderTsGauge.set({ directory: dir }, directories[dir].tsCounter);
-                            });
-                        }
-                        resolve();
-                    })
-            })
-            .catch(err => {
-                reject(err);
-            });
-    })
+    return Promise.all([getDiskSpace(), countFilesFromFolder(PATH_TO_MONITOR)])
+        .spread((diskUsage, directories) => {
+            if (diskUsage) {
+                diskUsage.forEach(disk => {
+                    nfDiskUsageAvailableGauge.set({ filesystem: disk.filesystem }, disk.usePrecents);
+                });
+            }
+            if (directories) {
+                Object.keys(directories).forEach(dir => {
+                    nfsFolderMp4Gauge.set({ directory: dir }, directories[dir].mp4Counter);
+                    nfsFolderTsGauge.set({ directory: dir }, directories[dir].tsCounter);
+                });
+            }
+        })
+        .catch(err => {
+            console.log(`Failed to get metrics with error ${err}`);
+            return Promise.reject(err);
+        });
 }
 
 app.listen(PORT, () => {
