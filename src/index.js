@@ -41,7 +41,6 @@ app.get('/metrics', (req, res) => {
 
 
 function getMetrics() {
-    let directories;
     return new Promise((resolve, reject) => {
         return getDiskSpace()
             .then(diskUsageRespone => {

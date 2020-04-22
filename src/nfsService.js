@@ -47,6 +47,7 @@ function countFilesFromFolder() {
 
 function getFilesFromDirs(dirs) {
     let result = {};
+
     return Promise.map(dirs, dir => {
         if (dir) {
             result[dir] = { mp4Counter: 0, tsCounter: 0 };
@@ -69,11 +70,13 @@ function getFilesFromDirs(dirs) {
         }
     }).then(() => {
         return result;
-    });
+    })
+        .catch(err => {
+            console.log(`Failed to get files from dirs with error ${err}`);
+        });
 }
 
 function getDirectories() {
-
     return fs.readdir(PATH_TO_MONITOR)
         .then(dirs => {
             return Promise.map(dirs, dir => {
