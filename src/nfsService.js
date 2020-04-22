@@ -1,5 +1,3 @@
-require('dotenv').config();
-
 const { statSync, readdirSync } = require('fs');
 const path = require('path');
 const df = require('node-df');
@@ -12,13 +10,19 @@ const TS_EXT = '.ts';
 
 function getDiskSpace() {
     let diskUsage = [];
+    let options = {
+        file: '/',
+        prefixMultiplier: 'GB',
+        isDisplayPrefixMultiplier: true,
+        precision: 2
+    };
 
     return new Promise((resolve, reject) => {
-        return df((error, response) => {
+        return df(options, (error, response) => { // options
             if (error) {
                 reject(error);
             }
-            response.forEach(disk => {
+            response.forEach(disk => { // lodash map
                 disk.usePrecents = (disk.used / disk.size) * 100;
                 disk.available = disk.available / 1000;
                 disk.size = disk.size / 1000;
@@ -40,7 +44,7 @@ function countFilesFromFolder() {
     return null;
 }
 
-function getFilesFromDirs(dirs) {
+function getFilesFromDirs(dirs) { // Promises
     let dirFileAndSubDirs;
     let result = {};
 
