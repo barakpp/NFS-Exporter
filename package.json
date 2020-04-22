@@ -9,9 +9,11 @@
   "author": "Barak Fahima",
   "license": "ISC",
   "dependencies": {
+    "bluebird": "^3.7.2",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
-    "fs": "0.0.1-security",
+    "fs-extra": "^9.0.0",
+    "lodash": "^4.17.15",
     "node-df": "^0.1.4",
     "os": "^0.1.1",
     "path": "^0.12.7",

@@ -28,37 +28,43 @@ const nfDiskUsageAvailableGauge = new Gauge({
 
 const app = express();
 
-app.get('/metrics', async (req, res) => {
-    await getMetrics();
-    res.set('Content-Type', register.contentType);
-    res.end(register.metrics());
+app.get('/metrics', (req, res) => {
+    getMetrics()
+        .then(() => {
+            res.set('Content-Type', register.contentType);
+            res.end(register.metrics());
+        })
+        .catch(err => {
+            console.log(`Error while getting the metrics with error ${err}`);
+        });
 });
 
 
-async function getMetrics() {
-    let diskUsage;
+function getMetrics() {
     let directories;
-
-    try {
-        diskUsage = await getDiskSpace();
-    }
-    catch (err) {
-        console.log(`Failed to extact disk usage with error ${err}`);
-    }
-
-    directories = countFilesFromFolder();
-
-    if (directories) {
-        Object.keys(directories).forEach(dir => {
-            nfsFolderMp4Gauge.set({ directory: dir }, directories[dir].mp4Counter);
-            nfsFolderTsGauge.set({ directory: dir }, directories[dir].tsCounter);
-        });
-    }
-    if (diskUsage) {
-        diskUsage.forEach(disk => {
-            nfDiskUsageAvailableGauge.set({ filesystem: disk.filesystem }, disk.usePrecents);
-        });
-    }
+    return new Promise((resolve, reject) => {
+        return getDiskSpace()
+            .then(diskUsageRespone => {
+                if (diskUsageRespone) {
+                    diskUsageRespone.forEach(disk => {
+                        nfDiskUsageAvailableGauge.set({ filesystem: disk.filesystem }, disk.usePrecents);
+                    });
+                }
+                return countFilesFromFolder()
+                    .then(directories => {
+                        if (directories) {
+                            Object.keys(directories).forEach(dir => {
+                                nfsFolderMp4Gauge.set({ directory: dir }, directories[dir].mp4Counter);
+                                nfsFolderTsGauge.set({ directory: dir }, directories[dir].tsCounter);
+                            });
+                        }
+                        resolve();
+                    })
+            })
+            .catch(err => {
+                reject(err);
+            });
+    })
 }
 
 app.listen(PORT, () => {

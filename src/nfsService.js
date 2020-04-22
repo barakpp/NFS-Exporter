@@ -1,6 +1,8 @@
-const { statSync, readdirSync } = require('fs');
+const Promise = require('bluebird');
+const fs = require('fs-extra');
 const path = require('path');
 const df = require('node-df');
+const _ = require('lodash');
 
 const PATH_TO_MONITOR = process.env.PATH_TO_MONITOR;
 
@@ -9,25 +11,21 @@ const TS_EXT = '.ts';
 
 
 function getDiskSpace() {
-    let diskUsage = [];
+    let diskUsage;
     let options = {
-        file: '/',
         prefixMultiplier: 'GB',
-        isDisplayPrefixMultiplier: true,
         precision: 2
     };
 
     return new Promise((resolve, reject) => {
-        return df(options, (error, response) => { // options
+        return df(options, (error, response) => {
             if (error) {
                 reject(error);
             }
-            response.forEach(disk => { // lodash map
+            diskUsage = _.map(response, disk => {
                 disk.usePrecents = (disk.used / disk.size) * 100;
-                disk.available = disk.available / 1000;
-                disk.size = disk.size / 1000;
-                disk.used = disk.used / 1000;
-                diskUsage.push(disk);
+                return disk;
+
             });
             resolve(diskUsage);
         });
@@ -36,58 +34,59 @@ function getDiskSpace() {
 
 
 function countFilesFromFolder() {
-    let directories = getDirectories();
-
-    if (directories) {
-        return getFilesFromDirs(directories);
-    }
-    return null;
+    return getDirectories()
+        .then(directories => {
+            if (directories) {
+                return getFilesFromDirs(directories);
+            }
+        })
+        .catch(err => {
+            console.log(`Failed to get directories with error ${err}`);
+        });
 }
 
-function getFilesFromDirs(dirs) { // Promises
-    let dirFileAndSubDirs;
+function getFilesFromDirs(dirs) {
     let result = {};
-
-    dirs.forEach(dir => {
-        try {
+    return Promise.map(dirs, dir => {
+        if (dir) {
             result[dir] = { mp4Counter: 0, tsCounter: 0 };
-            dirFileAndSubDirs = readdirSync(dir);
-
-            dirFileAndSubDirs.forEach(subDirOrFile => {
-                if (statSync(path.join(dir, subDirOrFile)).isFile()) {
-                    if (path.extname(subDirOrFile) == MP4_EXT) {
-                        result[dir].mp4Counter++;
-                    }
-                    else if (path.extname(subDirOrFile) == TS_EXT) {
-                        result[dir].tsCounter++;
-                    }
-                }
-            });
+            return fs.readdir(dir)
+                .then(files => {
+                    return Promise.map(files, file => {
+                        return fs.stat(path.join(dir, file))
+                            .then(stat => {
+                                if (stat.isFile()) {
+                                    if (path.extname(file) == MP4_EXT) {
+                                        result[dir].mp4Counter++;
+                                    }
+                                    else if (path.extname(file) == TS_EXT) {
+                                        result[dir].tsCounter++;
+                                    }
+                                }
+                            })
+                    })
+                })
         }
-        catch (error) {
-            console.log(`Failed to extact files from folders with error: ${error}`);
-            return null;
-        }
+    }).then(() => {
+        return result;
     });
-    return result;
 }
 
 function getDirectories() {
-    let dirFileAndSubDirs;
-    let dirs = [];
 
-    try {
-        dirFileAndSubDirs = readdirSync(PATH_TO_MONITOR);
-    }
-    catch (error) {
-        console.log(`Failed to extact directories from the given path with error ${error}`);
-        return null;
-    }
+    return fs.readdir(PATH_TO_MONITOR)
+        .then(dirs => {
+            return Promise.map(dirs, dir => {
+                return fs.stat(PATH_TO_MONITOR + dir)
+                    .then(stat => {
+                        return stat.isDirectory() ? PATH_TO_MONITOR + dir : null;
+                    })
+            });
 
-    dirFileAndSubDirs.forEach(subDirOrFile => {
-        statSync(PATH_TO_MONITOR + subDirOrFile).isDirectory() ? dirs.push(path.join(PATH_TO_MONITOR, subDirOrFile)) : null;
-    });
-    return dirs;
+        })
+        .catch(err => {
+            console.log(`Error while getting directories with error ${err}`);
+        });
 }
 
 exports.countFilesFromFolder = countFilesFromFolder;
