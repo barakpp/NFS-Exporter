@@ -10,7 +10,7 @@ NFS-Exporter is a prometheus exporter for monitoring a givven path, the exporter
 Clone this project to your machine and then install the dependencies.
 
 ```bash
-git clone <project URL> 
+git clone https://github.com/barakpp/NFS-Exporter.git 
 cd NFS-Exporter
 npm i
 ```
