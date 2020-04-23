@@ -1,6 +1,6 @@
 # NFS-Exporter
 
-NFS-Exporter is a prometheus exporter for monitoring a givven path, the exporters monitors the following:
+NFS-Exporter is a prometheus exporter for monitoring a given path, the exporters monitors the following:
 * Number of MP4 files in all sub-directories for a given path.
 * Number of TS files in all sub-directories for a given path.
 * File system usage.
