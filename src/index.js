@@ -7,7 +7,7 @@ const { countFilesFromFolder, getDiskSpace } = require('./nfsService');
 const Promise = require('bluebird');
 
 const PORT = process.env.PORT || 5555;
-const PATH_TO_MONITOR = process.env.PATH_TO_MONITOR;
+const PATH_TO_MONITOR = process.env.PATH_TO_MONITOR || /mnt/devContent/;
 
 const nfsFolderTsGauge = new Gauge({
     name: 'nfs_folder_ts_files',
