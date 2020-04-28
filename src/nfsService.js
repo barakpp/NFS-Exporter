@@ -50,9 +50,6 @@ function dirSearch(dirPath) {
             });
             return Promise.resolve(result);
         })
-        .catch(err => {
-            return Promise.reject(err);
-        });
 }
 
 function countFilesFromFolder(pathToMonitor) {
@@ -70,9 +67,6 @@ function countFilesFromFolder(pathToMonitor) {
             }).then(() => {
                 return Promise.resolve(results);
             })
-        })
-        .catch(err => {
-            return Promise.reject(err);
         })
 }
 
