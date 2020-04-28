@@ -30,106 +30,51 @@ function getDiskSpace() {
     });
 }
 
-function countFilesFromFolder(pathToMonitor) {
+function dirSearch(dirPath) {
+    let dirName = path.basename(dirPath);
     let result = {};
-    let fileExt;
-    let seperatedPath;
-    let captureName;
+
+    _.isUndefined(result[dirName]) ? result[dirName] = { mp4Counter: 0, tsCounter: 0, totalSize: 0 } : null;
 
     return Filehoud.create()
-        .path(pathToMonitor)
+        .includeFileStats()
+        .path(dirPath)
         .ext([MP4_EXT, TS_EXT])
         .find()
         .then(filesPath => {
-            filesPath.filter(file => file.includes('capture'))
-                .forEach(capturePath => {
-                    fileExt = path.extname(capturePath);
-                    seperatedPath = capturePath.split(path.sep);
-                    [captureName] = seperatedPath.filter(file => file.includes('capture'));
-                    _.isUndefined(result[captureName]) ? result[captureName] = { mp4Counter: 0, tsCounter: 0 } : null;
-
-                    fileExt == MP4_EXT ? result[captureName].mp4Counter++ : null;
-                    fileExt == TS_EXT ? result[captureName].tsCounter++ : null;
-                });
-            return result;
+            filesPath.forEach(filesPath => {
+                fileExt = path.extname(filesPath.path);
+                result[dirName].totalSize += (filesPath.stats.size / 1000000000);
+                fileExt == MP4_EXT ? result[dirName].mp4Counter++ : null;
+                fileExt == TS_EXT ? result[dirName].tsCounter++ : null;
+            });
+            return Promise.resolve(result);
         })
         .catch(err => {
             return Promise.reject(err);
         });
-
 }
-// function countFilesFromFolder() {
-//     return getDirectories(PATH_TO_MONITOR)
-//         .then(directories => {
 
-//             if (directories) {
-//                 return getFilesFromDirs(directories);
-//             }
-//         })
-//         .catch(err => {
-//             console.log(`Failed to get directories with error ${err}`);
-//         });
-// }
+function countFilesFromFolder(pathToMonitor) {
+    let results = [];
 
-// function getFilesFromDirs(dirs) {
-//     let result = {};
-
-//     return Promise.map(dirs, dir => {
-//         if (dir) {
-//             result[dir] = { mp4Counter: 0, tsCounter: 0 };
-//             return fs.readdir(dir)
-//                 .then(files => {
-//                     return Promise.map(files, file => {
-//                         return getStat(path.join(dir, file))
-//                             .then(fileExt => {
-//                                 fileExt == MP4_EXT ? result[dir].mp4Counter++ : null;
-//                                 fileExt == TS_EXT ? result[dir].tsCounter++ : null;
-//                             });
-//                     })
-//                 })
-//         }
-//     }).then(() => {
-//         return result;
-//     })
-//         .catch(err => {
-//             console.log(`Failed to get files from dirs with error ${err}`);
-//         });
-// }
-
-// function getStat(filePath) {
-//     return fs.stat(filePath)
-//         .then(stat => {
-//             if (stat.isFile()) {
-//                 if (path.extname(filePath) == MP4_EXT) {
-//                     return MP4_EXT;
-//                 }
-//                 else if (path.extname(filePath) == TS_EXT) {
-//                     return TS_EXT;
-//                 }
-//                 return null
-//             }
-//             return null;
-//         })
-// }
-
-// function getDirectories(dirPath) { // requrc
-//     return fs.readdir(dirPath)
-//         .then(dirs => {
-//             return Promise.map(dirs, dir => {
-//                 return fs.stat(path.join(dirPath + dir))
-//                     .then(stat => {
-//                         if (stat.isDirectory()) {
-//                             return getDirectories(path.join(dirPath + dir + '/'));
-//                         }
-//                     })
-
-//             });
-
-//         })
-//         .catch(err => {
-//             console.log(`Error while getting directories with error ${err}`);
-//         });
-// }
+    return Filehoud.create()
+        .path(pathToMonitor)
+        .directory()
+        .depth(0)
+        .find()
+        .then(directories => {
+            return Promise.each(directories, dir => {
+                return dirSearch(dir)
+                    .then(res => results.push(res));
+            }).then(() => {
+                return Promise.resolve(results);
+            })
+        })
+        .catch(err => {
+            return Promise.reject(err);
+        })
+}
 
 exports.countFilesFromFolder = countFilesFromFolder;
 exports.getDiskSpace = getDiskSpace;
