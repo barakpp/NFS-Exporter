@@ -1,5 +1,7 @@
 const Promise = require('bluebird');
 const path = require('path');
+const moment = require('moment');
+const fse = require('fs-extra');
 const df = require('node-df');
 const Filehoud = require('filehound');
 const _ = require('lodash');
@@ -8,6 +10,7 @@ const DISK_PREFIX_MULTIPLIER = process.env.DISK_PREFIX_MULTIPLIER || 'GB';
 
 const MP4_EXT = '.mp4';
 const TS_EXT = '.ts';
+const FILE_PATH = './last-results.json';
 
 function getDiskSpace() {
     let diskUsage;
@@ -54,19 +57,41 @@ function dirSearch(dirPath) {
 
 function countFilesFromFolder(pathToMonitor) {
     let results = [];
+    let resultsToFile = {};
 
-    return Filehoud.create()
-        .path(pathToMonitor)
-        .directory()
-        .depth(0)
-        .find()
-        .then(directories => {
-            return Promise.each(directories, dir => {
-                return dirSearch(dir)
-                    .then(res => results.push(res));
-            }).then(() => {
-                return Promise.resolve(results);
-            })
+
+    return fse.readJSON(FILE_PATH)
+        .then(fileContent => {
+            let lastRequest = fileContent.lastRequest;
+            let lastResults = fileContent.results;
+
+            if (moment(moment().diff(lastRequest, 'seconds')) > 10) {
+                Filehoud.create()
+                    .path(pathToMonitor)
+                    .directory()
+                    .depth(0)
+                    .find()
+                    .then(directories => {
+                        Promise.each(directories, dir => {
+                            return dirSearch(dir)
+                                .then(res => results.push(res));
+                        }).then(() => {
+                            resultsToFile = {
+                                lastRequest: moment(),
+                                results: results
+                            }
+                            fse.ensureFileSync(FILE_PATH);
+                            fse.writeJSONSync(FILE_PATH, resultsToFile);
+                        })
+                    });
+            }
+            return Promise.resolve(lastResults);
+        })
+        .catch(err => {
+            if (err.code === 'ENOENT') {
+                fse.ensureFileSync(FILE_PATH);
+                fse.writeJSONSync(FILE_PATH, { lastRequest: moment() });
+            }
         })
 }
 
