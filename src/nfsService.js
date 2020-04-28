@@ -7,7 +7,7 @@ const Filehoud = require('filehound');
 const _ = require('lodash');
 
 const DISK_PREFIX_MULTIPLIER = process.env.DISK_PREFIX_MULTIPLIER || 'GB';
-
+const INTERVAL_TIME = 10;
 const MP4_EXT = '.mp4';
 const TS_EXT = '.ts';
 const FILE_PATH = './last-results.json';
@@ -65,7 +65,7 @@ function countFilesFromFolder(pathToMonitor) {
             let lastRequest = fileContent.lastRequest;
             let lastResults = fileContent.results;
 
-            if (moment(moment().diff(lastRequest, 'seconds')) > 10) {
+            if (moment(moment().diff(lastRequest, 'seconds')) > INTERVAL_TIME) {
                 Filehoud.create()
                     .path(pathToMonitor)
                     .directory()
@@ -85,12 +85,13 @@ function countFilesFromFolder(pathToMonitor) {
                         })
                     });
             }
+            //fse.writeJSONSync(FILE_PATH, { lastRequest: moment(), })
             return Promise.resolve(lastResults);
         })
         .catch(err => {
             if (err.code === 'ENOENT') {
                 fse.ensureFileSync(FILE_PATH);
-                fse.writeJSONSync(FILE_PATH, { lastRequest: moment() });
+                fse.writeJSONSync(FILE_PATH, { lastRequest: moment(), results: [] });
             }
         })
 }
