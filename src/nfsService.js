@@ -71,7 +71,7 @@ function countFilesFromFolder(pathToMonitor) {
                     .directory()
                     .depth(0)
                     .find()
-                    .then(directories => {
+                    .each(directories => {
                         Promise.each(directories, dir => {
                             return dirSearch(dir)
                                 .then(res => results.push(res));
