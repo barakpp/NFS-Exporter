@@ -60,9 +60,9 @@ function getMetrics() {
             if (directories) {
                 directories.forEach(dir => {
                     Object.keys(dir).forEach(dirName => {
-                        nfsFolderMp4Gauge.set({ directory: dirName }, dir[dirName].mp4Counter);
-                        nfsFolderTsGauge.set({ directory: dirName }, dir[dirName].tsCounter);
-                        nfsFolderSizeGauge.set({ directory: dirName }, dir[dirName].totalSize);
+                        // nfsFolderMp4Gauge.set({ directory: dirName }, dir[dirName].mp4Counter);
+                        // nfsFolderTsGauge.set({ directory: dirName }, dir[dirName].tsCounter);
+                        nfsFolderSizeGauge.set({ directory: dirName }, dir[dirName].size);
                     });
                 });
             }

@@ -3,6 +3,7 @@ const path = require('path');
 const moment = require('moment');
 const fse = require('fs-extra');
 const df = require('node-df');
+const du = require('du');
 const Filehoud = require('filehound');
 const _ = require('lodash');
 
@@ -66,22 +67,32 @@ function countFilesFromFolder(pathToMonitor) {
             let lastResults = fileContent.results;
 
             if (moment(moment().diff(lastRequest, 'seconds')) > INTERVAL_TIME) {
-                Filehoud.create()
+                return Filehoud.create()
                     .path(pathToMonitor)
                     .directory()
                     .depth(0)
                     .find()
-                    .each(directories => {
-                        Promise.each(directories, dir => {
-                            return dirSearch(dir)
-                                .then(res => results.push(res));
-                        }).then(() => {
-                            resultsToFile = {
-                                lastRequest: moment(),
-                                results: results
-                            }
-                            fse.ensureFileSync(FILE_PATH);
-                            fse.writeJSONSync(FILE_PATH, resultsToFile);
+                    .then(directories => {
+                        // Promise.each(directories, dir => {
+                        //     return dirSearch(dir)
+                        //         .then(res => results.push(res));
+                        // }).then(() => {
+                        //     resultsToFile = {
+                        //         lastRequest: moment(),
+                        //         results: results
+                        //     }
+                        //     fse.ensureFileSync(FILE_PATH);
+                        //     fse.writeJSONSync(FILE_PATH, resultsToFile);
+                        // })
+                        return Promise.map(directories, dir => {
+                            return du(dir)
+                                .then(size => {
+                                    return {
+                                        [path.basename(dir)]: {
+                                            size: Number((size / 1000000000).toFixed(2))
+                                        }
+                                    }
+                                })
                         })
                     });
             }
